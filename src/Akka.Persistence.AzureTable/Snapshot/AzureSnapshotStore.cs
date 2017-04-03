@@ -50,7 +50,7 @@ namespace Akka.Persistence.AzureTable.Snapshot
         {
             var table = _client.Value.GetTableReference(_settings.TableName);
 
-            var query = BuildSnapshotTableQuery(persistenceId, criteria);
+            var query = BuildSnapshotTableQuery(persistenceId.ReplaceDisallowedChars(), criteria);
 
             return table.ExecuteQuery(query).OrderByDescending(t => t.RowKey).Select(ToSelectedSnapshot).FirstOrDefault();
         }
@@ -65,7 +65,9 @@ namespace Akka.Persistence.AzureTable.Snapshot
 
             TableOperation upsertOperation = TableOperation.Insert(ToSnapshotEntry(metadata, snapshot));
 
-            var entity = (SnapshotEntry)table.Execute(TableOperation.Retrieve<SnapshotEntry>(metadata.PersistenceId, SnapshotEntry.ToRowKey(metadata.SequenceNr))).Result;
+            var entity = (SnapshotEntry)table.Execute(TableOperation.Retrieve<SnapshotEntry>(
+                metadata.PersistenceId.ReplaceDisallowedChars(), 
+                SnapshotEntry.ToRowKey(metadata.SequenceNr))).Result;
             if (entity != null)
             {
                 entity.Payload = JsonConvert.SerializeObject(snapshot);
@@ -82,7 +84,9 @@ namespace Akka.Persistence.AzureTable.Snapshot
         protected override Task DeleteAsync(SnapshotMetadata metadata)
         {
             var table = _client.Value.GetTableReference(_settings.TableName);
-            TableOperation getOperation = TableOperation.Retrieve<SnapshotEntry>(metadata.PersistenceId, SnapshotEntry.ToRowKey(metadata.SequenceNr));
+            TableOperation getOperation = TableOperation.Retrieve<SnapshotEntry>(
+                metadata.PersistenceId.ReplaceDisallowedChars(), 
+                SnapshotEntry.ToRowKey(metadata.SequenceNr));
             TableResult result = table.Execute(getOperation);
             TableOperation deleteOperation = TableOperation.Delete((SnapshotEntry)result.Result);
             return table.ExecuteAsync(deleteOperation);
@@ -96,7 +100,9 @@ namespace Akka.Persistence.AzureTable.Snapshot
         protected override async Task DeleteAsync(string persistenceId, SnapshotSelectionCriteria criteria)
         {
             var table = _client.Value.GetTableReference(_settings.TableName);
-            TableQuery<SnapshotEntry> query = BuildSnapshotTableQuery(persistenceId, criteria);
+            TableQuery<SnapshotEntry> query = BuildSnapshotTableQuery(
+                persistenceId.ReplaceDisallowedChars(), 
+                criteria);
 
             var results = table.ExecuteQuery(query).OrderByDescending(t => t.RowKey).ToList();
             if (results.Count > 0)
@@ -113,7 +119,7 @@ namespace Akka.Persistence.AzureTable.Snapshot
         private static TableQuery<SnapshotEntry> BuildSnapshotTableQuery(string persistenceId, SnapshotSelectionCriteria criteria)
         {
             string comparsion = TableQuery.CombineFilters(
-                TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, persistenceId),
+                TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, persistenceId.ReplaceDisallowedChars()),
                 TableOperators.And,
                 TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.LessThanOrEqual, SnapshotEntry.ToRowKey(criteria.MaxSequenceNr)));
 
@@ -131,7 +137,12 @@ namespace Akka.Persistence.AzureTable.Snapshot
         private static SnapshotEntry ToSnapshotEntry(SnapshotMetadata metadata, object snapshot)
         {
             var payload = JsonConvert.SerializeObject(snapshot);
-            return new SnapshotEntry(metadata.PersistenceId, metadata.SequenceNr, metadata.Timestamp.Ticks, snapshot.GetType().TypeQualifiedNameForManifest(), payload);
+            return new SnapshotEntry(
+                metadata.PersistenceId.ReplaceDisallowedChars(), 
+                metadata.SequenceNr, 
+                metadata.Timestamp.Ticks, 
+                snapshot.GetType().TypeQualifiedNameForManifest(), 
+                payload);
         }
 
         private static SelectedSnapshot ToSelectedSnapshot(SnapshotEntry entry)

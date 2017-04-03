@@ -70,7 +70,7 @@ namespace Akka.Persistence.AzureTable.Journal
 
             TableContinuationToken continuationToken = null;
             var table = _client.Value.GetTableReference(_settings.TableName);
-            var tableQuery = BuildReplayTableQuery(persistenceId, fromSequenceNr, toSequenceNr);
+            var tableQuery = BuildReplayTableQuery(persistenceId.ReplaceDisallowedChars(), fromSequenceNr, toSequenceNr);
 
             do
             {
@@ -96,7 +96,7 @@ namespace Akka.Persistence.AzureTable.Journal
         {
             var table = _client.Value.GetTableReference(_settings.MetadataTableName);
 
-            var tableResult = await table.ExecuteAsync(TableOperation.Retrieve<MetadataEntry>(persistenceId, persistenceId));
+            var tableResult = await table.ExecuteAsync(TableOperation.Retrieve<MetadataEntry>(persistenceId.ReplaceDisallowedChars(), persistenceId.ReplaceDisallowedChars()));
 
             return tableResult.HttpStatusCode == 200 
                 ? tableResult.Result?.AsInstanceOf<MetadataEntry>()?.SequenceNr ?? 0 
@@ -111,7 +111,7 @@ namespace Akka.Persistence.AzureTable.Journal
         {
             // TODO: optimize the query
             IEnumerable<JournalEntry> results = _client.Value.GetTableReference(_settings.TableName)
-                    .ExecuteQuery(BuildDeleteTableQuery(persistenceId, toSequenceNr))
+                    .ExecuteQuery(BuildDeleteTableQuery(persistenceId.ReplaceDisallowedChars(), toSequenceNr))
                     .OrderByDescending(t => t.RowKey);
 
             if (results.Any())
@@ -141,7 +141,7 @@ namespace Akka.Persistence.AzureTable.Journal
             {
                 var persistentMessages = g.SelectMany(aw => (IImmutableList<IPersistentRepresentation>)aw.Payload).ToList();
 
-                var persistenceId = g.Key;
+                var persistenceId = g.Key.ReplaceDisallowedChars();
                 var highSequenceId = persistentMessages.Max(c => c.SequenceNr);
 
                 var batchOperation = new TableBatchOperation();
@@ -211,7 +211,7 @@ namespace Akka.Persistence.AzureTable.Journal
             return new JournalEntry(message.PersistenceId, message.SequenceNr, payload, message.Payload.GetType().TypeQualifiedNameForManifest());
         }
 
-        private static Persistent ToPersistenceRepresentation(JournalEntry entry, IActorRef sender)
+        private Persistent ToPersistenceRepresentation(JournalEntry entry, IActorRef sender)
         {
             var payload = JsonConvert.DeserializeObject(entry.Payload, Type.GetType(entry.Manifest));
             return new Persistent(payload, long.Parse(entry.RowKey), entry.PartitionKey, entry.Manifest, false, sender);

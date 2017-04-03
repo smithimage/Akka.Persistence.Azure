@@ -102,6 +102,7 @@
     <Compile Include="SerializerExtensions.cs" />
     <Compile Include="Snapshot\AzureSnapshotStore.cs" />
     <Compile Include="Snapshot\SnapshotEntry.cs" />
+    <Compile Include="TableKeyExtenstions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Akka.Persistence.AzureTable.nuspec" />
