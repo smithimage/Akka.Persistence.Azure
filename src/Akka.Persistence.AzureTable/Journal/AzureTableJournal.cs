@@ -21,11 +21,13 @@ namespace Akka.Persistence.AzureTable.Journal
 {
     public class AzureTableJournal : AsyncWriteJournal
     {
+        private readonly Akka.Serialization.Serialization _serialization;
         private readonly AzureTableJournalSettings _settings;
         private Lazy<CloudTableClient> _client;
 
         public AzureTableJournal()
         {
+            _serialization = Context.System.Serialization;
             _settings = AzureTablePersistence.Get(Context.System).JournalSettings;
         }
 
@@ -219,13 +221,17 @@ namespace Akka.Persistence.AzureTable.Journal
 
         private JournalEntry ToJournalEntry(IPersistentRepresentation message)
         {
-            var payload = JsonConvert.SerializeObject(message.Payload);
+            var serializer = _serialization.FindSerializerFor(message.Payload);
+            var payload = serializer.ToBinary(message.Payload);// JsonConvert.SerializeObject(message.Payload);
+
             return new JournalEntry(message.PersistenceId, message.SequenceNr, payload, message.Payload.GetType().TypeQualifiedNameForManifest());
         }
 
         private Persistent ToPersistenceRepresentation(JournalEntry entry, IActorRef sender)
         {
-            var payload = JsonConvert.DeserializeObject(entry.Payload, Type.GetType(entry.Manifest));
+            Type type = Type.GetType(entry.Manifest, true);
+            var serializer = _serialization.FindSerializerForType(type);
+            var payload = serializer.FromBinary((byte [])entry.Payload, type);// JsonConvert.DeserializeObject(entry.Payload, Type.GetType(entry.Manifest));
             return new Persistent(payload, long.Parse(entry.RowKey), entry.PartitionKey, entry.Manifest, false, sender);
         }
     }
