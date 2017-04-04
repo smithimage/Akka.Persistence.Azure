@@ -13,7 +13,7 @@ namespace Akka.Persistence.AzureTable.Snapshot
     {
         public SnapshotEntry() { }
 
-        public SnapshotEntry(string persistenceId, long sequenceNr, long snapshotTimestamp, string manifest, string payload)
+        public SnapshotEntry(string persistenceId, long sequenceNr, long snapshotTimestamp, string manifest, byte[] payload)
         {
             PartitionKey = persistenceId?.ReplaceDisallowedChars();
             RowKey = ToRowKey(sequenceNr);
@@ -27,7 +27,7 @@ namespace Akka.Persistence.AzureTable.Snapshot
 
         public string Manifest { get; set; }
 
-        public string Payload { get; set; }
+        public byte[] Payload { get; set; }
 
         public static string ToRowKey(long version)
         {

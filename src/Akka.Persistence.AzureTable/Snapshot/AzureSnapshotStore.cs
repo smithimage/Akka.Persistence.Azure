@@ -18,10 +18,12 @@ namespace Akka.Persistence.AzureTable.Snapshot
     public class AzureSnapshotStore : SnapshotStore
     {
         private readonly AzureTableSnapshotStoreSettings _settings;
+        private readonly Akka.Serialization.Serialization _serialization;
         private Lazy<CloudTableClient> _client;
 
         public AzureSnapshotStore()
         {
+            _serialization = Context.System.Serialization;
             _settings = AzureTablePersistence.Get(Context.System).SnapshotStoreSettings;
         }
 
@@ -65,14 +67,15 @@ namespace Akka.Persistence.AzureTable.Snapshot
         {
             var table = _client.Value.GetTableReference(_settings.TableName);
 
-            TableOperation upsertOperation = TableOperation.Insert(ToSnapshotEntry(metadata, snapshot));
+            SnapshotEntry snapshotEntry = ToSnapshotEntry(metadata, snapshot);
+            TableOperation upsertOperation = TableOperation.Insert(snapshotEntry);
 
             var entity = (SnapshotEntry)table.Execute(TableOperation.Retrieve<SnapshotEntry>(
                 metadata.PersistenceId.ReplaceDisallowedChars(), 
                 SnapshotEntry.ToRowKey(metadata.SequenceNr))).Result;
             if (entity != null)
             {
-                entity.Payload = JsonConvert.SerializeObject(snapshot);
+                entity.Payload = snapshotEntry.Payload;
                 upsertOperation = TableOperation.Replace(entity);
             }
 
@@ -139,9 +142,10 @@ namespace Akka.Persistence.AzureTable.Snapshot
             return new TableQuery<SnapshotEntry>().Where(comparsion);
         }
 
-        private static SnapshotEntry ToSnapshotEntry(SnapshotMetadata metadata, object snapshot)
+        private SnapshotEntry ToSnapshotEntry(SnapshotMetadata metadata, object snapshot)
         {
-            var payload = JsonConvert.SerializeObject(snapshot);
+            var serializer = _serialization.FindSerializerFor(snapshot);
+            var payload = serializer.ToBinary(snapshot);            
             return new SnapshotEntry(
                 metadata.PersistenceId, 
                 metadata.SequenceNr, 
@@ -150,9 +154,12 @@ namespace Akka.Persistence.AzureTable.Snapshot
                 payload);
         }
 
-        private static SelectedSnapshot ToSelectedSnapshot(SnapshotEntry entry)
+        private SelectedSnapshot ToSelectedSnapshot(SnapshotEntry entry)
         {
-            var payload = JsonConvert.DeserializeObject(entry.Payload, Type.GetType(entry.Manifest));
+            Type type = Type.GetType(entry.Manifest, true);
+            var serializer = _serialization.FindSerializerForType(type);
+            var payload = serializer.FromBinary((byte[])entry.Payload, type);
+
             return new SelectedSnapshot(new SnapshotMetadata(entry.PartitionKey, long.Parse(entry.RowKey), new DateTime(entry.SnapshotTimestamp)), payload);
         }
     }
