@@ -50,7 +50,9 @@ namespace Akka.Persistence.AzureTable.Snapshot
         {
             var table = _client.Value.GetTableReference(_settings.TableName);
 
-            var query = BuildSnapshotTableQuery(persistenceId.ReplaceDisallowedChars(), criteria);
+            var query = BuildSnapshotTableQuery(
+                persistenceId.ReplaceDisallowedChars(), 
+                criteria);
 
             return table.ExecuteQuery(query).OrderByDescending(t => t.RowKey).Select(ToSelectedSnapshot).FirstOrDefault();
         }
@@ -119,7 +121,10 @@ namespace Akka.Persistence.AzureTable.Snapshot
         private static TableQuery<SnapshotEntry> BuildSnapshotTableQuery(string persistenceId, SnapshotSelectionCriteria criteria)
         {
             string comparsion = TableQuery.CombineFilters(
-                TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, persistenceId.ReplaceDisallowedChars()),
+                TableQuery.GenerateFilterCondition(
+                    "PartitionKey", 
+                    QueryComparisons.Equal, 
+                    persistenceId.ReplaceDisallowedChars()),
                 TableOperators.And,
                 TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.LessThanOrEqual, SnapshotEntry.ToRowKey(criteria.MaxSequenceNr)));
 
@@ -138,7 +143,7 @@ namespace Akka.Persistence.AzureTable.Snapshot
         {
             var payload = JsonConvert.SerializeObject(snapshot);
             return new SnapshotEntry(
-                metadata.PersistenceId.ReplaceDisallowedChars(), 
+                metadata.PersistenceId, 
                 metadata.SequenceNr, 
                 metadata.Timestamp.Ticks, 
                 snapshot.GetType().TypeQualifiedNameForManifest(), 

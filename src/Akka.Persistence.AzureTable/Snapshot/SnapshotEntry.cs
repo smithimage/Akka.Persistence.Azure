@@ -15,7 +15,7 @@ namespace Akka.Persistence.AzureTable.Snapshot
 
         public SnapshotEntry(string persistenceId, long sequenceNr, long snapshotTimestamp, string manifest, string payload)
         {
-            PartitionKey = persistenceId;
+            PartitionKey = persistenceId?.ReplaceDisallowedChars();
             RowKey = ToRowKey(sequenceNr);
 
             SnapshotTimestamp = snapshotTimestamp;

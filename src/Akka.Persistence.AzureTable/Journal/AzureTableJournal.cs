@@ -96,7 +96,9 @@ namespace Akka.Persistence.AzureTable.Journal
         {
             var table = _client.Value.GetTableReference(_settings.MetadataTableName);
 
-            var tableResult = await table.ExecuteAsync(TableOperation.Retrieve<MetadataEntry>(persistenceId.ReplaceDisallowedChars(), persistenceId.ReplaceDisallowedChars()));
+            var tableResult = await table.ExecuteAsync(TableOperation.Retrieve<MetadataEntry>(
+                persistenceId.ReplaceDisallowedChars(), 
+                persistenceId.ReplaceDisallowedChars()));
 
             return tableResult.HttpStatusCode == 200 
                 ? tableResult.Result?.AsInstanceOf<MetadataEntry>()?.SequenceNr ?? 0 
@@ -111,7 +113,9 @@ namespace Akka.Persistence.AzureTable.Journal
         {
             // TODO: optimize the query
             IEnumerable<JournalEntry> results = _client.Value.GetTableReference(_settings.TableName)
-                    .ExecuteQuery(BuildDeleteTableQuery(persistenceId.ReplaceDisallowedChars(), toSequenceNr))
+                    .ExecuteQuery(BuildDeleteTableQuery(
+                        persistenceId.ReplaceDisallowedChars(), 
+                        toSequenceNr))
                     .OrderByDescending(t => t.RowKey);
 
             if (results.Any())
@@ -137,7 +141,7 @@ namespace Akka.Persistence.AzureTable.Journal
             var table = _client.Value.GetTableReference(_settings.TableName);
 
             var messagesList = messages.ToList();
-            var groupedTasks = messagesList.GroupBy(x => x.PersistenceId).ToDictionary(g => g.Key, async g =>
+            var groupedTasks = messagesList.GroupBy(x => x.PersistenceId.ReplaceDisallowedChars()).ToDictionary(g => g.Key.ReplaceDisallowedChars(), async g =>
             {
                 var persistentMessages = g.SelectMany(aw => (IImmutableList<IPersistentRepresentation>)aw.Payload).ToList();
 
@@ -161,7 +165,7 @@ namespace Akka.Persistence.AzureTable.Journal
                     tasks => messagesList.Select(
                         m =>
                         {
-                            var task = groupedTasks[m.PersistenceId];
+                            var task = groupedTasks[m.PersistenceId.ReplaceDisallowedChars()];
                             return task.IsFaulted ? TryUnwrapException(task.Exception) : null;
                         }).ToImmutableList());
         }
@@ -170,7 +174,9 @@ namespace Akka.Persistence.AzureTable.Journal
         {
             var table = _client.Value.GetTableReference(_settings.MetadataTableName);
 
-            var tableResult = await table.ExecuteAsync(TableOperation.Retrieve<MetadataEntry>(persistenceId, persistenceId));
+            var tableResult = await table.ExecuteAsync(TableOperation.Retrieve<MetadataEntry>(
+                persistenceId.ReplaceDisallowedChars(), 
+                persistenceId.ReplaceDisallowedChars()));
 
             MetadataEntry metadataEntry = tableResult.Result as MetadataEntry;
 
@@ -189,7 +195,10 @@ namespace Akka.Persistence.AzureTable.Journal
         {
             return new TableQuery<JournalEntry>().Where(
                                 TableQuery.CombineFilters(TableQuery.CombineFilters(
-                                    TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, persistenceId),
+                                    TableQuery.GenerateFilterCondition(
+                                        "PartitionKey", 
+                                        QueryComparisons.Equal, 
+                                        persistenceId.ReplaceDisallowedChars()),
                                     TableOperators.And,
                                     TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.GreaterThanOrEqual, JournalEntry.ToRowKey(fromSequenceNr))),
                                 TableOperators.And,
@@ -200,7 +209,10 @@ namespace Akka.Persistence.AzureTable.Journal
         {
             return new TableQuery<JournalEntry>().Where(
                         TableQuery.CombineFilters(
-                                TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, persistenceId),
+                                TableQuery.GenerateFilterCondition(
+                                    "PartitionKey", 
+                                    QueryComparisons.Equal, 
+                                    persistenceId.ReplaceDisallowedChars()),
                                 TableOperators.And,
                                 TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.LessThanOrEqual, JournalEntry.ToRowKey(sequenceNr))));
         }

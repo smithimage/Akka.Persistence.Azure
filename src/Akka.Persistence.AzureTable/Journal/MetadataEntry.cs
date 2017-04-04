@@ -15,7 +15,7 @@ namespace Akka.Persistence.AzureTable.Journal
 
         public MetadataEntry(string persistenceId, long sequenceNr)
         {
-            PartitionKey = persistenceId;
+            PartitionKey = persistenceId.ReplaceDisallowedChars();
             RowKey = persistenceId;
 
             SequenceNr = sequenceNr;

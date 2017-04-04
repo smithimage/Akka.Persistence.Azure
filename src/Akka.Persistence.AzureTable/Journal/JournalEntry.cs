@@ -18,7 +18,7 @@ namespace Akka.Persistence.AzureTable.Journal
 
         public JournalEntry(string persistenceId, long sequenceNr, string payload, string manifest)
         {
-            PartitionKey = persistenceId;
+            PartitionKey = persistenceId.ReplaceDisallowedChars();
             RowKey = ToRowKey(sequenceNr);
 
             Payload = payload;
