@@ -222,8 +222,7 @@ namespace Akka.Persistence.AzureTable.Journal
         private JournalEntry ToJournalEntry(IPersistentRepresentation message)
         {
             var serializer = _serialization.FindSerializerFor(message.Payload);
-            var payload = serializer.ToBinary(message.Payload);// JsonConvert.SerializeObject(message.Payload);
-
+            var payload = serializer.ToBinary(message.Payload);
             return new JournalEntry(message.PersistenceId, message.SequenceNr, payload, message.Payload.GetType().TypeQualifiedNameForManifest());
         }
 
@@ -231,7 +230,7 @@ namespace Akka.Persistence.AzureTable.Journal
         {
             Type type = Type.GetType(entry.Manifest, true);
             var serializer = _serialization.FindSerializerForType(type);
-            var payload = serializer.FromBinary((byte [])entry.Payload, type);// JsonConvert.DeserializeObject(entry.Payload, Type.GetType(entry.Manifest));
+            var payload = serializer.FromBinary((byte [])entry.Payload, type);
             return new Persistent(payload, long.Parse(entry.RowKey), entry.PartitionKey, entry.Manifest, false, sender);
         }
     }
