@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("Akka.Persistence.Azure")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Akka Persistence journal and snapshot store backed by Azure Table database.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyProduct("Akka.Persistence.Azure")]
 [assembly: AssemblyCulture("")]
